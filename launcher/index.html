@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Мониторинг отзывов GIGAS и SOFT99</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, Arial, sans-serif; }
+    body { margin: 0; background: #f3f4f6; color: #111827; }
+    .shell { max-width: 880px; margin: 48px auto; padding: 0 20px; }
+    .card { background: white; border-radius: 18px; padding: 28px; box-shadow: 0 12px 40px rgba(17,24,39,.12); }
+    h1 { margin: 0 0 8px; font-size: 30px; }
+    .sub { color: #6b7280; margin: 0 0 26px; }
+    .brands { display: flex; gap: 10px; margin-bottom: 24px; }
+    .brand { background: #111827; color: white; border-radius: 999px; padding: 7px 12px; font-weight: 700; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    label { display: block; font-weight: 700; margin-bottom: 7px; }
+    input { width: 100%; box-sizing: border-box; padding: 13px 14px; border: 1px solid #d1d5db; border-radius: 10px; font: inherit; }
+    .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 22px; }
+    button, .link { border: 0; border-radius: 10px; padding: 13px 18px; font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; }
+    button { background: #f97316; color: white; }
+    button:disabled { opacity: .55; cursor: wait; }
+    .link { background: #e5e7eb; color: #111827; }
+    .status { margin-top: 22px; border-radius: 12px; padding: 16px; background: #f9fafb; border: 1px solid #e5e7eb; min-height: 50px; }
+    .ok { border-color: #86efac; background: #f0fdf4; }
+    .error { border-color: #fca5a5; background: #fef2f2; }
+    .small { font-size: 13px; color: #6b7280; margin-top: 18px; line-height: 1.5; }
+    @media (max-width: 650px) { .grid { grid-template-columns: 1fr; } .shell { margin: 20px auto; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="card">
+      <h1>Мониторинг отзывов</h1>
+      <p class="sub">Ручной запуск сбора отзывов Ozon и Wildberries через GitHub Actions</p>
+      <div class="brands"><span class="brand">GIGAS</span><span class="brand">SOFT99</span></div>
+
+      <div class="grid">
+        <div>
+          <label for="dateFrom">Начало периода</label>
+          <input id="dateFrom" type="date">
+        </div>
+        <div>
+          <label for="dateTo">Конец периода</label>
+          <input id="dateTo" type="date">
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="runButton" type="button">Запустить сбор отзывов</button>
+        <button id="last7Button" type="button">Последние 7 дней</button>
+        <a class="link" href="https://github.com/murmurano-star/marketplace-review-monitor/actions/workflows/manual-monitor.yml" target="_blank" rel="noreferrer">Открыть GitHub Actions</a>
+      </div>
+
+      <div id="status" class="status">Готово к запуску.</div>
+      <p class="small">Приложение запускает workflow в репозитории murmurano-star/marketplace-review-monitor. Для работы требуется установленный GitHub CLI и выполненный вход через <code>gh auth login</code>.</p>
+    </section>
+  </main>
+
+  <script>
+    const dateFrom = document.getElementById('dateFrom');
+    const dateTo = document.getElementById('dateTo');
+    const runButton = document.getElementById('runButton');
+    const last7Button = document.getElementById('last7Button');
+    const statusBox = document.getElementById('status');
+
+    function isoDate(value) {
+      const year = value.getFullYear();
+      const month = String(value.getMonth() + 1).padStart(2, '0');
+      const day = String(value.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function setLast7Days() {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(end.getDate() - 6);
+      dateFrom.value = isoDate(start);
+      dateTo.value = isoDate(end);
+    }
+
+    function show(message, kind = '') {
+      statusBox.className = `status ${kind}`.trim();
+      statusBox.innerHTML = message;
+    }
+
+    async function runMonitor() {
+      if (dateFrom.value && dateTo.value && dateFrom.value > dateTo.value) {
+        show('Дата начала не может быть позже даты окончания.', 'error');
+        return;
+      }
+      runButton.disabled = true;
+      show('Запускаю GitHub Actions…');
+      try {
+        const response = await fetch('/api/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date_from: dateFrom.value, date_to: dateTo.value })
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || 'Ошибка запуска');
+        const link = payload.run?.url
+          ? `<br><a href="${payload.run.url}" target="_blank" rel="noreferrer">Открыть текущий запуск</a>`
+          : '';
+        show(`Сбор отзывов запущен.${link}`, 'ok');
+      } catch (error) {
+        show(`Не удалось запустить сбор: ${error.message}`, 'error');
+      } finally {
+        runButton.disabled = false;
+      }
+    }
+
+    setLast7Days();
+    runButton.addEventListener('click', runMonitor);
+    last7Button.addEventListener('click', setLast7Days);
+  </script>
+</body>
+</html>
