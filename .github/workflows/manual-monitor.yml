@@ -1,0 +1,81 @@
+name: Manual marketplace review monitoring
+
+on:
+  workflow_dispatch:
+    inputs:
+      date_from:
+        description: "Начало периода, YYYY-MM-DD; пусто = последние 7 дней"
+        required: false
+        type: string
+      date_to:
+        description: "Конец периода, YYYY-MM-DD; пусто = текущая дата"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Restore review database
+        uses: actions/cache/restore@v4
+        with:
+          path: data/reviews.sqlite3
+          key: reviews-db-${{ github.run_id }}
+          restore-keys: |
+            reviews-db-
+
+      - name: Install application and Chromium
+        run: |
+          pip install -e .
+          python -m playwright install --with-deps chromium
+
+      - name: Run public monitor
+        env:
+          DATE_FROM: ${{ inputs.date_from }}
+          DATE_TO: ${{ inputs.date_to }}
+        run: |
+          ARGS=(run --config config/targets.yml)
+          if [[ -n "$DATE_FROM" ]]; then ARGS+=(--date-from "$DATE_FROM"); fi
+          if [[ -n "$DATE_TO" ]]; then ARGS+=(--date-to "$DATE_TO"); fi
+          review-monitor "${ARGS[@]}"
+
+      - name: Save review database
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: data/reviews.sqlite3
+          key: reviews-db-${{ github.run_id }}
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: marketplace-review-report-${{ github.run_number }}
+          path: |
+            reports/latest.xlsx
+            reports/latest.md
+            reports/dashboard.html
+          retention-days: 90
+          if-no-files-found: warn
+
+      - name: Publish report to GitHub Issue
+        if: ${{ success() && vars.CREATE_REPORT_ISSUE == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --title "Отзывы маркетплейсов — ручной запуск ${{ github.run_number }}" \
+            --body-file reports/latest.md
