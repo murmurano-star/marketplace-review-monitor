@@ -1,0 +1,43 @@
+timezone: Europe/Moscow
+
+date_range:
+  date_from: ""
+  date_to: ""
+  default_lookback_days: 7
+
+database: data/reviews.sqlite3
+output_dir: reports
+max_dashboard_rows: 10000
+
+sources:
+  - id: ozon-gk-yunikom-public
+    collector: public_marketplace_browser
+    enabled: true
+    platform: ozon
+    seller_url: https://www.ozon.ru/seller/gk-yunikom/
+    seller_name: ГК Юником
+    brands: [GIGAS, SOFT99]
+    headless: true
+    max_products_per_seller: 100
+    max_reviews_per_product: 500
+    scroll_rounds: 25
+    review_scroll_rounds: 20
+    page_timeout_ms: 60000
+    delay_ms: 1500
+
+  - id: wildberries-seller-38336-public
+    collector: public_marketplace_browser
+    enabled: true
+    platform: wildberries
+    seller_url: https://www.wildberries.ru/seller/38336
+    seller_name: "Wildberries seller 38336"
+    brands: [GIGAS, SOFT99]
+    headless: true
+    max_products_per_seller: 100
+    max_reviews_per_product: 500
+    scroll_rounds: 25
+    review_scroll_rounds: 20
+    page_timeout_ms: 60000
+    delay_ms: 1500
+
+import_files: []
