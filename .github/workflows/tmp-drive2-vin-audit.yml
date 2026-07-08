@@ -1,0 +1,35 @@
+name: Temporary Drive2 VIN audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/drive2_vin_audit.py'
+      - '.github/workflows/tmp-drive2-vin-audit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright openpyxl
+          python -m playwright install --with-deps chromium
+      - name: Collect VINs and decode through Ravenol
+        run: python scripts/drive2_vin_audit.py
+      - name: Upload Excel report
+        uses: actions/upload-artifact@v4
+        with:
+          name: drive2-vin-ravenol-report
+          path: reports/drive2_vin_by_manufacturer.xlsx
+          if-no-files-found: error
+          retention-days: 7
