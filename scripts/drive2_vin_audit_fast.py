@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 from pathlib import Path
 
-import scripts.drive2_vin_audit as audit
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import drive2_vin_audit as audit
 
 
 async def decode_all_fast(context, codes: list[str], debug_dir: Path):
