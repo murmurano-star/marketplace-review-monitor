@@ -30,7 +30,7 @@ jobs:
       - name: Collect Drive2 VINs and verify with Ravenol
         run: |
           mkdir -p reports
-          python scripts/drive2_vin_audit.py \
+          python scripts/drive2_vin_audit_fast.py \
             --drive2-url 'https://www.drive2.ru/o/b/517173162262135362/' \
             --last-page 144 \
             --output reports/drive2_ravenol_vin_summary.xlsx
