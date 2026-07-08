@@ -1,0 +1,47 @@
+name: Temporary Drive2 VIN audit
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright openpyxl
+          python -m playwright install --with-deps chromium
+
+      - name: Collect Drive2 VINs and verify with Ravenol
+        run: |
+          mkdir -p reports
+          python scripts/drive2_vin_audit_fast.py \
+            --drive2-url 'https://www.drive2.ru/o/b/517173162262135362/' \
+            --last-page 144 \
+            --output reports/drive2_ravenol_vin_summary.xlsx
+
+      - name: Upload result and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: drive2-ravenol-vin-audit
+          path: |
+            reports/drive2_ravenol_vin_summary.xlsx
+            reports/debug/**
+          if-no-files-found: warn
+          retention-days: 7
